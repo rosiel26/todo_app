@@ -1,104 +1,81 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mysql from 'mysql2/promise';
 
-// MySQL connection pool
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
+// --- CORS helper ---
+function setCorsHeaders(res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
 
-// Ensure table exists
-const initTable = async () => {
-  const connection = await pool.getConnection();
-  try {
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS todos (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        text VARCHAR(255) NOT NULL,
-        completed BOOLEAN DEFAULT false,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-  } finally {
-    connection.release();
-  }
+// --- Database connection ---
+const dbConfig = {
+  host: process.env.DB_HOST,        // e.g., mysql-production-7313.up.railway.app
+  user: process.env.DB_USER,        // your DB user
+  password: process.env.DB_PASSWORD,// your DB password
+  database: process.env.DB_NAME,    // e.g., todo_app
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // --- CORS Setup ---
-  const allowedOrigins = [
-    'http://localhost:5173', // local dev
-    'https://rosiel26-todoapp.vercel.app', // production
-  ];
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
+  setCorsHeaders(res);
+
+  if (req.method === 'OPTIONS') {
+    // Handle preflight request
+    return res.status(200).end();
   }
 
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  // Initialize DB table
-  await initTable();
-
+  let connection;
   try {
-    const { method } = req;
+    connection = await mysql.createConnection(dbConfig);
 
-    switch (method) {
-      case 'GET': {
-        const [rows] = await pool.query('SELECT * FROM todos ORDER BY completed ASC, created_at DESC');
-        res.status(200).json(rows);
-        break;
-      }
-
-      case 'POST': {
-        const { text } = req.body;
-        if (!text) return res.status(400).json({ error: 'Text is required' });
-
-        const [result] = await pool.query('INSERT INTO todos (text) VALUES (?)', [text]);
-        const [newTodo] = await pool.query('SELECT * FROM todos WHERE id = ?', [(result as any).insertId]);
-        res.status(201).json(newTodo[0]);
-        break;
-      }
-
-      case 'PUT': {
-        const { id, text, completed } = req.body;
-        if (!id) return res.status(400).json({ error: 'ID is required' });
-
-        let query = 'UPDATE todos SET ';
-        const params: any[] = [];
-        if (text !== undefined) { query += 'text = ?'; params.push(text); }
-        if (completed !== undefined) { if (params.length) query += ', '; query += 'completed = ?'; params.push(completed); }
-        query += ' WHERE id = ?'; params.push(id);
-
-        await pool.query(query, params);
-        res.status(200).json({ message: 'Todo updated' });
-        break;
-      }
-
-      case 'DELETE': {
-        const { id } = req.body;
-        if (!id) return res.status(400).json({ error: 'ID is required' });
-
-        await pool.query('DELETE FROM todos WHERE id = ?', [id]);
-        res.status(200).json({ message: 'Todo deleted' });
-        break;
-      }
-
-      default:
-        res.setHeader('Allow', ['GET','POST','PUT','DELETE','OPTIONS']);
-        res.status(405).end(`Method ${method} Not Allowed`);
+    // --- GET todos ---
+    if (req.method === 'GET') {
+      const [rows] = await connection.query('SELECT * FROM todos');
+      return res.status(200).json(rows);
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+
+    // --- POST todo ---
+    if (req.method === 'POST') {
+      const { text } = req.body;
+      if (!text) return res.status(400).json({ error: 'Text is required' });
+
+      const [result] = await connection.execute(
+        'INSERT INTO todos (text, completed) VALUES (?, ?)',
+        [text, false]
+      );
+
+      return res.status(201).json({ id: (result as any).insertId, text, completed: false });
+    }
+
+    // --- PUT todo ---
+    if (req.method === 'PUT') {
+      const { id, text, completed } = req.body;
+      if (!id) return res.status(400).json({ error: 'ID is required' });
+
+      await connection.execute(
+        'UPDATE todos SET text = ?, completed = ? WHERE id = ?',
+        [text, completed, id]
+      );
+
+      return res.status(200).json({ id, text, completed });
+    }
+
+    // --- DELETE todo ---
+    if (req.method === 'DELETE') {
+      const { id } = req.body;
+      if (!id) return res.status(400).json({ error: 'ID is required' });
+
+      await connection.execute('DELETE FROM todos WHERE id = ?', [id]);
+      return res.status(200).json({ id });
+    }
+
+    // --- Method not allowed ---
+    res.setHeader('Allow', 'GET,POST,PUT,DELETE,OPTIONS');
+    return res.status(405).end();
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (connection) await connection.end();
   }
 }

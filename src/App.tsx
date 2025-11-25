@@ -6,6 +6,7 @@ import './App.css';
 
 // Make sure this points to your Vercel API endpoint
 const API_URL = import.meta.env.VITE_API_BASE_URL + '/api/todos';
+console.log('API_URL:', API_URL);
 
 const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
