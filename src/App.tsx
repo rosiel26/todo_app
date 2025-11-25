@@ -5,7 +5,7 @@ import TodoList from './components/TodoList';
 import AddTodoForm from './components/AddTodoForm';
 import './App.css';
 
-const API_URL = '/api/todos';
+const API_URL = 'https://your-backend-url.up.railway.app/api/todos';
 
 const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);

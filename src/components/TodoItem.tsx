@@ -49,6 +49,34 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onDelete, onUpdate }) => {
 
 
 
+
+
+
+
+  // Log the props to the browser console for debugging
+
+
+
+
+
+
+
+  console.log('Todo item props:', todo);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   const [isEditing, setIsEditing] = useState(false);
 
 
@@ -225,7 +253,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onDelete, onUpdate }) => {
 
 
 
-                              {todo.created_at ? new Date(todo.created_at).toLocaleDateString() : ''}
+                              {todo.created_at}
 
 
 
