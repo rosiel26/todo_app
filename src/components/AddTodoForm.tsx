@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 
 interface AddTodoFormProps {
@@ -11,19 +10,19 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onAdd }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim()) return;
-    onAdd(text);
+    onAdd(text.trim());
     setText('');
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="add-todo-form">
       <input
         type="text"
+        placeholder="Add a new todo"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="What needs to be done?"
       />
-      <button type="submit">Add Todo</button>
+      <button type="submit">Add</button>
     </form>
   );
 };

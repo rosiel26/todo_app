@@ -1,16 +1,17 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Todo } from './types';
 import TodoList from './components/TodoList';
 import AddTodoForm from './components/AddTodoForm';
 import './App.css';
 
+// Make sure this points to your Vercel API endpoint
 const API_URL = import.meta.env.VITE_API_BASE_URL + '/api/todos';
 
 const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [filterDate, setFilterDate] = useState('');
 
+  // Fetch todos with optional date filter
   const fetchTodos = useCallback(async () => {
     try {
       const url = filterDate ? `${API_URL}?filterDate=${filterDate}` : API_URL;
@@ -26,6 +27,7 @@ const App: React.FC = () => {
     fetchTodos();
   }, [fetchTodos]);
 
+  // Add a new todo
   const handleAddTodo = async (text: string) => {
     try {
       await fetch(API_URL, {
@@ -33,33 +35,34 @@ const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       });
-      // After adding, refetch the list to get the latest sorted data
       fetchTodos();
     } catch (error) {
       console.error('Failed to add todo:', error);
     }
   };
 
+  // Update an existing todo (send ID in body)
   const handleUpdateTodo = async (id: number, text: string, completed: boolean) => {
     try {
-      await fetch(`${API_URL}/${id}`, {
+      await fetch(API_URL, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, completed }),
+        body: JSON.stringify({ id, text, completed }),
       });
-      // After updating, refetch the list to get the correct sorted order
       fetchTodos();
     } catch (error) {
       console.error('Failed to update todo:', error);
     }
   };
 
+  // Delete a todo (send ID in body)
   const handleDeleteTodo = async (id: number) => {
     try {
-      await fetch(`${API_URL}/${id}`, {
+      await fetch(API_URL, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
       });
-      // After deleting, refetch the list
       fetchTodos();
     } catch (error) {
       console.error('Failed to delete todo:', error);
@@ -88,4 +91,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
