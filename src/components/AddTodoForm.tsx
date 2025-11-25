@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 interface AddTodoFormProps {
-  onAdd: (text: string) => void;
+  onAdd: (title: string) => void;
 }
 
 const AddTodoForm: React.FC<AddTodoFormProps> = ({ onAdd }) => {

@@ -4,14 +4,14 @@ import TodoList from './components/TodoList';
 import AddTodoForm from './components/AddTodoForm';
 import './App.css';
 
-// Deployed API URL
-const API_URL = 'https://rosiel26-todoapp.vercel.app/api/index';
+// For deployment
+const API_URL = 'https://rosiel26-todoapp.vercel.app//api/index';
+
 
 const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [filterDate, setFilterDate] = useState('');
 
-  // --- Fetch todos ---
   const fetchTodos = useCallback(async () => {
     try {
       const url = filterDate ? `${API_URL}?filterDate=${filterDate}` : API_URL;
@@ -28,8 +28,9 @@ const App: React.FC = () => {
     fetchTodos();
   }, [fetchTodos]);
 
-  // --- Add a new todo ---
   const handleAddTodo = async (title: string) => {
+    if (!title.trim()) return;
+
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
@@ -50,7 +51,6 @@ const App: React.FC = () => {
     }
   };
 
-  // --- Update a todo ---
   const handleUpdateTodo = async (id: number, title: string, completed: boolean) => {
     try {
       const res = await fetch(API_URL, {
@@ -72,7 +72,6 @@ const App: React.FC = () => {
     }
   };
 
-  // --- Delete a todo ---
   const handleDeleteTodo = async (id: number) => {
     try {
       const res = await fetch(API_URL, {

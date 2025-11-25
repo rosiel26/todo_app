@@ -8,7 +8,7 @@ function setCorsHeaders(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
-// --- Database connection ---
+// --- Database config ---
 const dbConfig = {
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT),
@@ -26,15 +26,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     connection = await mysql.createConnection(dbConfig);
 
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    // Safely parse JSON body only for non-GET requests
+    let body = req.body;
+    if (req.method !== 'GET') {
+      if (!body) {
+        return res.status(400).json({ error: 'Request body is empty' });
+      }
+      if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body);
+        } catch {
+          return res.status(400).json({ error: 'Invalid JSON' });
+        }
+      }
+    }
 
-    // --- GET ---
+    // --- GET all todos ---
     if (req.method === 'GET') {
-      const [rows] = await connection.query('SELECT * FROM todo');
+      const [rows] = await connection.query('SELECT * FROM todo ORDER BY created_at DESC');
       return res.status(200).json(rows);
     }
 
-    // --- POST ---
+    // --- POST a new todo ---
     if (req.method === 'POST') {
       const { title } = body;
       if (!title) return res.status(400).json({ error: 'Title is required' });
@@ -51,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // --- PUT ---
+    // --- PUT update a todo ---
     if (req.method === 'PUT') {
       const { id, title, completed } = body;
       if (!id) return res.status(400).json({ error: 'ID is required' });
@@ -64,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ id, title, completed });
     }
 
-    // --- DELETE ---
+    // --- DELETE a todo ---
     if (req.method === 'DELETE') {
       const { id } = body;
       if (!id) return res.status(400).json({ error: 'ID is required' });

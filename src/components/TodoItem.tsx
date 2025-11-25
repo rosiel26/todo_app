@@ -81,7 +81,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onDelete, onUpdate }) => {
 
 
 
-  const [text, setText] = useState(todo.text);
+  const [text, setText] = useState(todo.title);
 
 
 
@@ -117,7 +117,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onDelete, onUpdate }) => {
 
 
 
-    onUpdate(todo.id, todo.text, !todo.completed);
+    onUpdate(todo.id, todo.title, !todo.completed);
 
 
 
@@ -241,7 +241,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onDelete, onUpdate }) => {
 
 
 
-                {todo.text}
+                {todo.title}
 
 
 
