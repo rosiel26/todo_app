@@ -4,23 +4,23 @@ import TodoList from './components/TodoList';
 import AddTodoForm from './components/AddTodoForm';
 import './App.css';
 
-// Make sure this points to your Vercel API endpoint
-const API_URL = import.meta.env.VITE_API_BASE_URL + '/api/index';
-console.log('API_URL:', API_URL);
+// Deployed API URL
+const API_URL = 'https://rosiel26-todoapp.vercel.app/api/index';
 
 const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [filterDate, setFilterDate] = useState('');
 
-  // Fetch todos with optional date filter
+  // --- Fetch todos ---
   const fetchTodos = useCallback(async () => {
     try {
       const url = filterDate ? `${API_URL}?filterDate=${filterDate}` : API_URL;
-      const response = await fetch(url);
-      const data = await response.json();
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const data = await res.json();
       setTodos(data);
-    } catch (error) {
-      console.error('Failed to fetch todos:', error);
+    } catch (err) {
+      console.error('Failed to fetch todos:', err);
     }
   }, [filterDate]);
 
@@ -28,45 +28,68 @@ const App: React.FC = () => {
     fetchTodos();
   }, [fetchTodos]);
 
-  // Add a new todo
-  const handleAddTodo = async (text: string) => {
+  // --- Add a new todo ---
+  const handleAddTodo = async (title: string) => {
     try {
-      await fetch(API_URL, {
+      const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ title }),
       });
-      fetchTodos();
-    } catch (error) {
-      console.error('Failed to add todo:', error);
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('API Error:', errorData);
+        return;
+      }
+
+      const newTodo = await res.json();
+      setTodos((prev) => [...prev, newTodo]);
+    } catch (err) {
+      console.error('Fetch error:', err);
     }
   };
 
-  // Update an existing todo (send ID in body)
-  const handleUpdateTodo = async (id: number, text: string, completed: boolean) => {
+  // --- Update a todo ---
+  const handleUpdateTodo = async (id: number, title: string, completed: boolean) => {
     try {
-      await fetch(API_URL, {
+      const res = await fetch(API_URL, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, text, completed }),
+        body: JSON.stringify({ id, title, completed }),
       });
-      fetchTodos();
-    } catch (error) {
-      console.error('Failed to update todo:', error);
+
+      if (!res.ok) {
+        const data = await res.json();
+        console.error('API Error:', data);
+        return;
+      }
+
+      const updatedTodo = await res.json();
+      setTodos((prev) => prev.map((todo) => (todo.id === id ? updatedTodo : todo)));
+    } catch (err) {
+      console.error('Failed to update todo:', err);
     }
   };
 
-  // Delete a todo (send ID in body)
+  // --- Delete a todo ---
   const handleDeleteTodo = async (id: number) => {
     try {
-      await fetch(API_URL, {
+      const res = await fetch(API_URL, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      fetchTodos();
-    } catch (error) {
-      console.error('Failed to delete todo:', error);
+
+      if (!res.ok) {
+        const data = await res.json();
+        console.error('API Error:', data);
+        return;
+      }
+
+      setTodos((prev) => prev.filter((todo) => todo.id !== id));
+    } catch (err) {
+      console.error('Failed to delete todo:', err);
     }
   };
 
@@ -74,6 +97,7 @@ const App: React.FC = () => {
     <div className="App">
       <h1>To-Do App</h1>
       <AddTodoForm onAdd={handleAddTodo} />
+
       <div className="filter-container">
         <input
           type="date"
@@ -82,6 +106,7 @@ const App: React.FC = () => {
         />
         <button onClick={() => setFilterDate('')}>Clear Filter</button>
       </div>
+
       <TodoList
         todos={todos}
         onDelete={handleDeleteTodo}

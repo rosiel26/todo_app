@@ -15,77 +15,69 @@ const dbConfig = {
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  ssl: {
-    rejectUnauthorized: false, // <-- allow self-signed certs
-  },
+  ssl: { rejectUnauthorized: false },
 };
-
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
-
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   let connection;
   try {
     connection = await mysql.createConnection(dbConfig);
 
-    let body = {};
-    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') {
-      try {
-        body = JSON.parse(req.body as string);
-      } catch (e) {
-        return res.status(400).json({ error: 'Invalid JSON' });
-      }
-    }
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
-    // --- GET todos ---
+    // --- GET ---
     if (req.method === 'GET') {
-      const [rows] = await connection.query('SELECT * FROM todos');
+      const [rows] = await connection.query('SELECT * FROM todo');
       return res.status(200).json(rows);
     }
 
-    // --- POST todo ---
+    // --- POST ---
     if (req.method === 'POST') {
-      const { text } = body as any;
-      if (!text) return res.status(400).json({ error: 'Text is required' });
+      const { title } = body;
+      if (!title) return res.status(400).json({ error: 'Title is required' });
 
       const [result] = await connection.execute(
-        'INSERT INTO todos (text, completed) VALUES (?, ?)',
-        [text, false]
+        'INSERT INTO todo (title, completed) VALUES (?, ?)',
+        [title, 0]
       );
 
-      return res.status(201).json({ id: (result as any).insertId, text, completed: false });
+      return res.status(201).json({
+        id: (result as any).insertId,
+        title,
+        completed: false,
+      });
     }
 
-    // --- PUT todo ---
+    // --- PUT ---
     if (req.method === 'PUT') {
-      const { id, text, completed } = body as any;
+      const { id, title, completed } = body;
       if (!id) return res.status(400).json({ error: 'ID is required' });
 
       await connection.execute(
-        'UPDATE todos SET text = ?, completed = ? WHERE id = ?',
-        [text, completed, id]
+        'UPDATE todo SET title = ?, completed = ? WHERE id = ?',
+        [title, completed ? 1 : 0, id]
       );
 
-      return res.status(200).json({ id, text, completed });
+      return res.status(200).json({ id, title, completed });
     }
 
-    // --- DELETE todo ---
+    // --- DELETE ---
     if (req.method === 'DELETE') {
-      const { id } = body as any;
+      const { id } = body;
       if (!id) return res.status(400).json({ error: 'ID is required' });
 
-      await connection.execute('DELETE FROM todos WHERE id = ?', [id]);
+      await connection.execute('DELETE FROM todo WHERE id = ?', [id]);
       return res.status(200).json({ id });
     }
 
-    // --- Method not allowed ---
     res.setHeader('Allow', 'GET,POST,PUT,DELETE,OPTIONS');
     return res.status(405).end();
   } catch (err) {
     console.error('DB Connection Error:', err);
-    return res.status(500).json({ error: 'Database error' });
+    return res.status(500).json({ error: 'Database error', message: (err as any).message });
   } finally {
     if (connection) await connection.end();
   }
