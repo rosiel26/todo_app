@@ -15,8 +15,11 @@ const dbConfig = {
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  ssl: { rejectUnauthorized: true },
+  ssl: {
+    rejectUnauthorized: false, // <-- allow self-signed certs
+  },
 };
+
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
