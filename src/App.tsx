@@ -5,7 +5,7 @@ import AddTodoForm from './components/AddTodoForm';
 import './App.css';
 
 // Make sure this points to your Vercel API endpoint
-const API_URL = import.meta.env.VITE_API_BASE_URL + '/api/todos';
+const API_URL = import.meta.env.VITE_API_BASE_URL + '/api/index';
 console.log('API_URL:', API_URL);
 
 const App: React.FC = () => {
