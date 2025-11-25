@@ -10,23 +10,31 @@ function setCorsHeaders(res: VercelResponse) {
 
 // --- Database connection ---
 const dbConfig = {
-  host: process.env.DB_HOST,        // e.g., mysql-production-7313.up.railway.app
-  user: process.env.DB_USER,        // your DB user
-  password: process.env.DB_PASSWORD,// your DB password
-  database: process.env.DB_NAME,    // e.g., todo_app
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  ssl: { rejectUnauthorized: true },
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
 
-  if (req.method === 'OPTIONS') {
-    // Handle preflight request
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   let connection;
   try {
     connection = await mysql.createConnection(dbConfig);
+
+    let body = {};
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') {
+      try {
+        body = JSON.parse(req.body as string);
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid JSON' });
+      }
+    }
 
     // --- GET todos ---
     if (req.method === 'GET') {
@@ -36,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // --- POST todo ---
     if (req.method === 'POST') {
-      const { text } = req.body;
+      const { text } = body as any;
       if (!text) return res.status(400).json({ error: 'Text is required' });
 
       const [result] = await connection.execute(
@@ -49,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // --- PUT todo ---
     if (req.method === 'PUT') {
-      const { id, text, completed } = req.body;
+      const { id, text, completed } = body as any;
       if (!id) return res.status(400).json({ error: 'ID is required' });
 
       await connection.execute(
@@ -62,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // --- DELETE todo ---
     if (req.method === 'DELETE') {
-      const { id } = req.body;
+      const { id } = body as any;
       if (!id) return res.status(400).json({ error: 'ID is required' });
 
       await connection.execute('DELETE FROM todos WHERE id = ?', [id]);
@@ -73,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Allow', 'GET,POST,PUT,DELETE,OPTIONS');
     return res.status(405).end();
   } catch (err) {
-    console.error(err);
+    console.error('DB Connection Error:', err);
     return res.status(500).json({ error: 'Database error' });
   } finally {
     if (connection) await connection.end();
